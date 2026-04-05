@@ -16,7 +16,7 @@ var require_admin = __commonJS({
       bootstrap() {
       },
       async registerTrads() {
-        return {};
+        return [];
       }
     };
     var index = /* @__PURE__ */ getDefaultExportFromCjs(src);
@@ -29,8 +29,9 @@ var require_server = __commonJS({
   "dist/server/index.js"(exports2, module2) {
     "use strict";
     var require$$0$2 = require("fs");
+    var require$$1$1 = require("module");
     var require$$0$1 = require("path");
-    var require$$1$1 = require("crypto");
+    var require$$1$2 = require("crypto");
     var require$$0$3 = require("child_process");
     var require$$0$4 = require("os");
     var require$$0$5 = require("assert");
@@ -42,8 +43,9 @@ var require_server = __commonJS({
     var node_stream = require("node:stream");
     var _interopDefault = (e2) => e2 && e2.__esModule ? e2 : { default: e2 };
     var require$$0__default$1 = /* @__PURE__ */ _interopDefault(require$$0$2);
-    var require$$0__default = /* @__PURE__ */ _interopDefault(require$$0$1);
     var require$$1__default = /* @__PURE__ */ _interopDefault(require$$1$1);
+    var require$$0__default = /* @__PURE__ */ _interopDefault(require$$0$1);
+    var require$$1__default$1 = /* @__PURE__ */ _interopDefault(require$$1$2);
     var require$$0__default$2 = /* @__PURE__ */ _interopDefault(require$$0$3);
     var require$$0__default$3 = /* @__PURE__ */ _interopDefault(require$$0$4);
     var require$$0__default$4 = /* @__PURE__ */ _interopDefault(require$$0$5);
@@ -82,10 +84,8 @@ var require_server = __commonJS({
       });
       return a3;
     }
-    function commonjsRequire(path2) {
-      throw new Error('Could not dynamically require "' + path2 + '". Please configure the dynamicRequireTargets or/and ignoreDynamicRequires option of @rollup/plugin-commonjs appropriately for this require call to work.');
-    }
     var fs$8 = require$$0__default$1.default;
+    var { createRequire } = require$$1__default.default;
     var path$b = require$$0__default.default;
     function resolveSessionAuthPath() {
       const cwd2 = process.cwd();
@@ -101,7 +101,8 @@ var require_server = __commonJS({
       }
       return resolvedPath;
     }
-    var strapiSessionAuth = commonjsRequire(resolveSessionAuthPath());
+    var runtimeRequire = createRequire(__filename);
+    var strapiSessionAuth = runtimeRequire(resolveSessionAuthPath());
     var sessionAuth$1 = strapiSessionAuth;
     var getService = () => strapi.plugin("admin-2fa").service("auth");
     var setRefreshCookie = (ctx, refreshToken, cookieOptions) => {
@@ -155,7 +156,7 @@ var require_server = __commonJS({
         routes: [
           {
             method: "POST",
-            path: "/admin-2fa/login",
+            path: "/login",
             handler: "auth.login",
             config: {
               auth: false
@@ -163,7 +164,7 @@ var require_server = __commonJS({
           },
           {
             method: "POST",
-            path: "/admin-2fa/verify",
+            path: "/verify",
             handler: "auth.verify",
             config: {
               auth: false
@@ -171,7 +172,7 @@ var require_server = __commonJS({
           },
           {
             method: "POST",
-            path: "/admin-2fa/resend",
+            path: "/resend",
             handler: "auth.resend",
             config: {
               auth: false
@@ -14608,7 +14609,7 @@ var require_server = __commonJS({
     var dist$1 = { exports: {} };
     (function(module22, exports$1) {
       !function(t2, n) {
-        module22.exports = n(require$$0__default$2.default, require$$1__default.default);
+        module22.exports = n(require$$0__default$2.default, require$$1__default$1.default);
       }(commonjsGlobal, function(t2, n) {
         return function(t3) {
           function n2(e2) {
@@ -15369,7 +15370,7 @@ var require_server = __commonJS({
         }, function(t3, n2) {
           t3.exports = require$$0__default$2.default;
         }, function(t3, n2) {
-          t3.exports = require$$1__default.default;
+          t3.exports = require$$1__default$1.default;
         }]);
       });
     })(dist$1);
@@ -15379,9 +15380,9 @@ var require_server = __commonJS({
         return installId;
       try {
         const machineId = distExports.machineIdSync();
-        return projectId ? require$$1__default.default.createHash("sha256").update(`${machineId}-${projectId}`).digest("hex") : require$$1__default.default.randomUUID();
+        return projectId ? require$$1__default$1.default.createHash("sha256").update(`${machineId}-${projectId}`).digest("hex") : require$$1__default$1.default.randomUUID();
       } catch (error2) {
-        return require$$1__default.default.randomUUID();
+        return require$$1__default$1.default.randomUUID();
       }
     };
     var createModelCache = (getModelFn) => {
@@ -29753,6 +29754,9 @@ ${error2.message}` : execaMessage;
       kind: "scalar",
       resolve: resolveYamlMerge
     });
+    function commonjsRequire(path2) {
+      throw new Error('Could not dynamically require "' + path2 + '". Please configure the dynamicRequireTargets or/and ignoreDynamicRequires option of @rollup/plugin-commonjs appropriately for this require call to work.');
+    }
     var NodeBuffer;
     try {
       _require$1 = commonjsRequire;
@@ -44654,7 +44658,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
       z: z2
     }, Symbol.toStringTag, { value: "Module" }));
     var require$$1 = /* @__PURE__ */ getAugmentedNamespace(dist);
-    var crypto = require$$1__default.default;
+    var crypto = require$$1__default$1.default;
     var { errors } = require$$1;
     var sessionAuth = strapiSessionAuth;
     var { ApplicationError: ApplicationError2, ValidationError: ValidationError3 } = errors;

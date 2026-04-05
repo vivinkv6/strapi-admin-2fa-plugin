@@ -13,6 +13,11 @@ This package handles:
 
 This package does **not** replace the Strapi admin login UI by itself. You still need a frontend/admin integration layer that calls the plugin endpoints.
 
+## Documentation
+
+- [Integration guide](./docs/INTEGRATION.md)
+- [Architecture guide](./docs/ARCHITECTURE.md)
+
 ## Endpoints
 
 The plugin exposes these content API routes:
@@ -20,6 +25,8 @@ The plugin exposes these content API routes:
 - `POST /api/admin-2fa/login`
 - `POST /api/admin-2fa/verify`
 - `POST /api/admin-2fa/resend`
+
+See the full request and response flow in [docs/INTEGRATION.md](./docs/INTEGRATION.md).
 
 ## Requirements
 
@@ -119,6 +126,8 @@ This plugin is backend-only. To use it for real admin login 2FA, your project mu
 - show an OTP input step
 - call `POST /api/admin-2fa/verify`
 - optionally call `POST /api/admin-2fa/resend`
+
+The expected frontend flow, payloads, and response handling are documented in [docs/INTEGRATION.md](./docs/INTEGRATION.md).
 
 If you already maintain a patched Strapi admin login screen, point it to:
 

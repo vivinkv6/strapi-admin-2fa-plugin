@@ -12,7 +12,8 @@
     "admin-auth"
   ],
   "files": [
-    "dist"
+    "dist",
+    "docs"
   ],
   "exports": {
     "./package.json": "./package.json",
