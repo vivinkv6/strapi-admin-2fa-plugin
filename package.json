@@ -1,0 +1,60 @@
+{
+  "name": "strapi-2fa-admin-plugin",
+  "version": "0.1.0",
+  "description": "Reusable Strapi admin 2FA plugin",
+  "type": "commonjs",
+  "keywords": [
+    "strapi",
+    "strapi-plugin",
+    "strapi-v5",
+    "2fa",
+    "otp",
+    "admin-auth"
+  ],
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    "./package.json": "./package.json",
+    "./strapi-admin": {
+      "source": "./admin/src/index.js",
+      "import": "./dist/admin/index.mjs",
+      "require": "./dist/admin/index.js",
+      "default": "./dist/admin/index.js"
+    },
+    "./strapi-server": {
+      "source": "./server/src/index.js",
+      "import": "./dist/server/index.mjs",
+      "require": "./dist/server/index.js",
+      "default": "./dist/server/index.js"
+    }
+  },
+  "scripts": {
+    "build": "strapi-plugin build",
+    "watch": "strapi-plugin watch",
+    "watch:link": "strapi-plugin watch:link",
+    "verify": "strapi-plugin verify"
+  },
+  "engines": {
+    "node": ">=20.0.0 <=22.x.x",
+    "npm": ">=9.0.0"
+  },
+  "devDependencies": {
+    "@strapi/sdk-plugin": "^5.0.0",
+    "prettier": "^3.0.0"
+  },
+  "peerDependencies": {
+    "@strapi/strapi": "^5.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "react-router-dom": "^6.0.0",
+    "styled-components": "^6.0.0"
+  },
+  "strapi": {
+    "name": "admin-2fa",
+    "displayName": "Admin 2FA",
+    "description": "Adds OTP-based 2FA for Strapi admin authentication",
+    "kind": "plugin"
+  },
+  "license": "MIT"
+}
