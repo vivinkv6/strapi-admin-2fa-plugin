@@ -232,6 +232,7 @@ const OtpField = ()=>{
                     id: "otp-code-error",
                     variant: "pi",
                     textColor: "danger600",
+                    textAlign: "center",
                     children: errors.code
                 })
             }) : null
