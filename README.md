@@ -1,31 +1,36 @@
 # @vivinkv28/strapi-2fa-admin-plugin
 
-`@vivinkv28/strapi-2fa-admin-plugin` is a Strapi 5 plugin that provides the backend side of an OTP-based 2FA flow for Strapi admin authentication.
+`@vivinkv28/strapi-2fa-admin-plugin` is a Strapi 5 plugin that adds the backend side of an OTP-based admin login flow.
 
-## What This Plugin Handles
+It gives your Strapi project:
 
-- admin credential validation
-- OTP challenge generation and hashing
+- admin credential validation before OTP
+- OTP challenge creation
 - OTP resend and verification
 - rate limiting for login, verify, and resend
 - OTP delivery through Strapi's email plugin
-- final Strapi admin session creation after OTP verification
+- final Strapi admin session creation only after OTP verification
 
-## Important Scope
+## What This Package Is
 
-This package is a backend/admin-auth engine.
+This package is a **backend/admin-auth plugin**.
 
-It does **not** replace the Strapi admin login UI by itself. Your host project still needs an admin-side integration layer that:
+It does **not** automatically replace the default Strapi admin login UI.
 
-1. collects admin email and password
-2. calls the plugin login endpoint
-3. shows an OTP input UI
-4. calls the plugin verify endpoint
-5. optionally calls the resend endpoint
+To use it in a real project, you need two parts:
+
+1. this plugin for the backend OTP/auth logic
+2. an admin login screen integration in your Strapi project that calls the plugin endpoints
+
+That means this package is ideal if you want:
+
+- a reusable backend OTP engine
+- control over how the admin login UI looks
+- a project-level patch/customization for the Strapi admin login page
 
 ## Endpoints
 
-The plugin exposes these routes:
+After installation, the plugin exposes:
 
 - `POST /api/admin-2fa/login`
 - `POST /api/admin-2fa/verify`
@@ -43,12 +48,11 @@ The plugin exposes these routes:
 npm install @vivinkv28/strapi-2fa-admin-plugin
 ```
 
-## Enable In A Strapi Project
+## Step 1: Enable The Plugin
 
-Add the plugin to your Strapi app config:
+In your Strapi project, update `config/plugins.ts`:
 
 ```ts
-// config/plugins.ts
 import type { Core } from "@strapi/strapi";
 
 const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Plugin => ({
@@ -77,129 +81,17 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Plugin =>
 export default config;
 ```
 
-## Admin UI Integration
+## Step 2: Configure Email
 
-Because this package does not inject the full login UI by itself, the host project must integrate the admin flow.
+This plugin sends OTP emails through Strapi's email plugin.
 
-### Expected UI flow
+Your project must have a working email provider configuration in `config/plugins.ts`.
 
-#### 1. Credentials step
+If email is not configured, login will fail when OTP delivery is attempted.
 
-- collect email and password
-- send them to `POST /api/admin-2fa/login`
-- if successful, store `challengeId` and switch to OTP mode
+## Step 3: Make Sure Server/Proxy Settings Are Correct
 
-#### 2. OTP step
-
-- collect the OTP code
-- send it to `POST /api/admin-2fa/verify`
-- if successful, continue the normal authenticated admin flow
-- provide a resend action that calls `POST /api/admin-2fa/resend`
-
-### Recommended UI behavior
-
-- keep login and OTP as separate form states
-- do not treat password validation as a completed login
-- complete the login only after `/verify` succeeds
-- restart from the credentials step if the challenge expires
-
-## Integration Guide
-
-### Login request
-
-```http
-POST /api/admin-2fa/login
-Content-Type: application/json
-```
-
-Example payload:
-
-```json
-{
-  "email": "admin@example.com",
-  "password": "super-secret-password",
-  "rememberMe": true,
-  "deviceId": "browser-device-id"
-}
-```
-
-Example success response:
-
-```json
-{
-  "data": {
-    "challengeId": "0d3af6fd-b351-4d1e-bb81-2a8201d8a0f4",
-    "expiresAt": "2026-04-05T18:30:00.000Z",
-    "maskedEmail": "admin@example.com",
-    "rememberMe": true
-  }
-}
-```
-
-### Verify request
-
-```http
-POST /api/admin-2fa/verify
-Content-Type: application/json
-```
-
-Example payload:
-
-```json
-{
-  "challengeId": "0d3af6fd-b351-4d1e-bb81-2a8201d8a0f4",
-  "code": "123456"
-}
-```
-
-Example success response:
-
-```json
-{
-  "data": {
-    "token": "<access-token>",
-    "accessToken": "<access-token>",
-    "user": {
-      "id": 1,
-      "email": "admin@example.com"
-    }
-  }
-}
-```
-
-### Resend request
-
-```http
-POST /api/admin-2fa/resend
-Content-Type: application/json
-```
-
-Example payload:
-
-```json
-{
-  "challengeId": "0d3af6fd-b351-4d1e-bb81-2a8201d8a0f4"
-}
-```
-
-### UI error states to handle
-
-- invalid email or password
-- OTP expired
-- OTP session not found
-- invalid OTP code
-- too many authentication attempts
-- maximum resend attempts exceeded
-
-## Host Project Requirements
-
-### Email provider
-
-The plugin sends OTP emails through Strapi's email plugin, so the host project must configure an email provider.
-
-### Proxy and HTTPS
-
-If the project runs behind a reverse proxy, configure `config/server.ts` correctly so secure admin cookies work.
+If your Strapi app runs behind a proxy, configure `config/server.ts` correctly so admin cookies work as expected.
 
 Typical example:
 
@@ -217,6 +109,320 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Server =>
 });
 
 export default config;
+```
+
+## Step 4: Add Admin Login UI Integration
+
+This package does not inject the login UI automatically.
+
+Your Strapi project must customize the admin login flow so it works like this:
+
+1. admin enters email and password
+2. frontend calls `POST /api/admin-2fa/login`
+3. frontend shows OTP screen
+4. admin enters OTP
+5. frontend calls `POST /api/admin-2fa/verify`
+6. optional resend button calls `POST /api/admin-2fa/resend`
+
+## Recommended Project Structure For The Admin Patch
+
+In your Strapi project, keep your admin patch files in your own `scripts` folder:
+
+```text
+your-project/
+  scripts/
+    strapi-admin-2fa-patch/
+      services/
+        auth.js
+        auth.mjs
+      pages/
+        Auth/
+          components/
+            Login.js
+            Login.mjs
+    apply-strapi-admin-2fa-patch.js
+```
+
+This keeps your admin customizations reproducible and easy to reapply after `npm install`.
+
+## Step 5: Patch The Strapi Admin Auth Service
+
+Create these files in your Strapi project:
+
+- `scripts/strapi-admin-2fa-patch/services/auth.js`
+- `scripts/strapi-admin-2fa-patch/services/auth.mjs`
+
+Start from the corresponding Strapi admin auth service file and add the OTP mutations below.
+
+### Add these mutations
+
+```js
+adminLoginWithOtp: builder.mutation({
+  query: (body) => ({
+    method: 'POST',
+    url: '/api/admin-2fa/login',
+    data: body,
+  }),
+  transformResponse(res) {
+    return res.data;
+  },
+}),
+
+verifyAdminLoginOtp: builder.mutation({
+  query: (body) => ({
+    method: 'POST',
+    url: '/api/admin-2fa/verify',
+    data: body,
+  }),
+  transformResponse(res) {
+    return res.data;
+  },
+  invalidatesTags: ['Me'],
+}),
+
+resendAdminLoginOtp: builder.mutation({
+  query: (body) => ({
+    method: 'POST',
+    url: '/api/admin-2fa/resend',
+    data: body,
+  }),
+  transformResponse(res) {
+    return res.data;
+  },
+}),
+```
+
+### Export these hooks
+
+```js
+const {
+  useAdminLoginWithOtpMutation,
+  useVerifyAdminLoginOtpMutation,
+  useResendAdminLoginOtpMutation,
+} = authService;
+```
+
+## Step 6: Patch The Strapi Login Screen
+
+Create these files in your Strapi project:
+
+- `scripts/strapi-admin-2fa-patch/pages/Auth/components/Login.js`
+- `scripts/strapi-admin-2fa-patch/pages/Auth/components/Login.mjs`
+
+This component must replace the normal one-step login with a two-step state:
+
+- credentials step
+- OTP step
+
+### Minimum state you need
+
+```js
+const [otpStep, setOtpStep] = React.useState(null);
+const [apiError, setApiError] = React.useState();
+
+const [adminLoginWithOtp, { isLoading: isLoggingIn }] = useAdminLoginWithOtpMutation();
+const [verifyAdminLoginOtp, { isLoading: isVerifyingOtp }] = useVerifyAdminLoginOtpMutation();
+const [resendAdminLoginOtp, { isLoading: isResendingOtp }] = useResendAdminLoginOtpMutation();
+```
+
+### Credentials submit handler
+
+```js
+const handleLogin = async (body) => {
+  setApiError(undefined);
+
+  const res = await adminLoginWithOtp({
+    ...body,
+    deviceId: crypto.randomUUID(),
+  });
+
+  if ('error' in res) {
+    setApiError(res.error.message ?? 'Something went wrong');
+    return;
+  }
+
+  setOtpStep({
+    challengeId: res.data.challengeId,
+    expiresAt: res.data.expiresAt,
+    maskedEmail: res.data.maskedEmail,
+    rememberMe: body.rememberMe,
+  });
+};
+```
+
+### OTP verify handler
+
+```js
+const handleVerifyOtp = async ({ code }) => {
+  if (!otpStep) return;
+
+  setApiError(undefined);
+
+  const res = await verifyAdminLoginOtp({
+    challengeId: otpStep.challengeId,
+    code,
+  });
+
+  if ('error' in res) {
+    setApiError(res.error.message ?? 'Something went wrong');
+    return;
+  }
+
+  dispatch(
+    login({
+      token: res.data.token,
+      persist: otpStep.rememberMe,
+    })
+  );
+
+  navigate('/');
+};
+```
+
+### OTP resend handler
+
+```js
+const handleResendOtp = async () => {
+  if (!otpStep) return;
+
+  setApiError(undefined);
+
+  const res = await resendAdminLoginOtp({
+    challengeId: otpStep.challengeId,
+  });
+
+  if ('error' in res) {
+    setApiError(res.error.message ?? 'Something went wrong');
+    return;
+  }
+
+  setOtpStep((current) =>
+    current
+      ? {
+          ...current,
+          expiresAt: res.data.expiresAt,
+          maskedEmail: res.data.maskedEmail,
+        }
+      : current
+  );
+};
+```
+
+### OTP input handling
+
+At minimum:
+
+```js
+const OTP_LENGTH = 6;
+const sanitizeOtp = (value = '') => value.replace(/\D/g, '').slice(0, OTP_LENGTH);
+```
+
+The working implementation used in the companion project includes:
+
+- 6 digit boxes
+- paste support
+- backspace handling
+- auto focus
+- inline error state
+
+## Step 7: Add A Patch Apply Script
+
+Create:
+
+- `scripts/apply-strapi-admin-2fa-patch.js`
+
+This script should:
+
+1. copy `scripts/strapi-admin-2fa-patch/services/auth.js`
+2. copy `scripts/strapi-admin-2fa-patch/services/auth.mjs`
+3. copy `scripts/strapi-admin-2fa-patch/pages/Auth/components/Login.js`
+4. copy `scripts/strapi-admin-2fa-patch/pages/Auth/components/Login.mjs`
+5. overwrite the matching files in `node_modules/@strapi/admin/...`
+6. clear stale Strapi admin cache directories
+
+## Step 8: Wire The Patch Script In `package.json`
+
+In your Strapi project `package.json`, add:
+
+```json
+{
+  "scripts": {
+    "prebuild": "node scripts/apply-strapi-admin-2fa-patch.js",
+    "predev": "node scripts/apply-strapi-admin-2fa-patch.js",
+    "predevelop": "node scripts/apply-strapi-admin-2fa-patch.js",
+    "postinstall": "node scripts/apply-strapi-admin-2fa-patch.js"
+  }
+}
+```
+
+This ensures the login patch is reapplied:
+
+- after dependency install
+- before build
+- before dev
+
+## Request Flow
+
+### Login
+
+```http
+POST /api/admin-2fa/login
+Content-Type: application/json
+```
+
+Example body:
+
+```json
+{
+  "email": "admin@example.com",
+  "password": "super-secret-password",
+  "rememberMe": true,
+  "deviceId": "browser-device-id"
+}
+```
+
+Example response:
+
+```json
+{
+  "data": {
+    "challengeId": "***",
+    "expiresAt": "2026-04-05T18:30:00.000Z",
+    "maskedEmail": "admin@example.com",
+    "rememberMe": true
+  }
+}
+```
+
+### Verify
+
+```http
+POST /api/admin-2fa/verify
+Content-Type: application/json
+```
+
+Example body:
+
+```json
+{
+  "challengeId": "***",
+  "code": "123456"
+}
+```
+
+### Resend
+
+```http
+POST /api/admin-2fa/resend
+Content-Type: application/json
+```
+
+Example body:
+
+```json
+{
+  "challengeId": "***"
+}
 ```
 
 ## Environment Variables
@@ -238,9 +444,20 @@ ADMIN_OTP_RESEND_EMAIL_LIMIT=5
 ADMIN_OTP_DEBUG_TIMINGS=false
 ```
 
-## Code-Level Architecture
+## Testing Checklist
 
-Main files:
+After setup, test these cases:
+
+1. correct email/password shows OTP screen
+2. correct OTP logs into admin successfully
+3. resend OTP works
+4. invalid OTP shows an error
+5. expired OTP restarts the flow properly
+6. wrong email/password still fails safely
+
+## Code-Level Overview
+
+Main plugin files:
 
 ```text
 admin/src/index.js
@@ -257,23 +474,24 @@ Responsibilities:
   Minimal admin plugin stub required by the Strapi Plugin SDK.
 
 - `server/src/routes/index.js`
-  Declares the login, verify, and resend routes.
+  Declares `/login`, `/verify`, and `/resend`.
 
 - `server/src/controllers/auth.js`
-  Reads the request, extracts client IP, delegates to the service, and sets the admin refresh cookie after successful OTP verification.
+  Extracts request data, resolves client IP, sets refresh cookies after verification.
 
 - `server/src/services/auth.js`
-  Core OTP logic: credential validation, challenge lifecycle, resend/verify rules, rate limiting, email sending, and final session creation.
+  Core OTP engine: credentials, challenge lifecycle, rate limits, email sending, and session creation.
 
 - `server/src/utils/strapi-session-auth.js`
-  Runtime helper that resolves Strapi's internal admin session utility for final session creation.
+  Resolves Strapi's internal admin session helper at runtime.
 
-## Repo Docs
+## Deeper Docs
 
-If you are reading the source repository directly, deeper docs are also available in:
+If you want more detail from the repository:
 
 - `docs/INTEGRATION.md`
 - `docs/ARCHITECTURE.md`
+- `admin-screen.md`
 
 ## Development
 
@@ -294,12 +512,12 @@ Useful commands:
 1. run `npm install`
 2. run `npm run build`
 3. run `npm run verify`
-4. verify the plugin in a real Strapi app
+4. test in a real Strapi app
 5. bump the version
-6. publish with `npm publish --access public`
+6. run `npm publish --access public`
 
 ## Production Notes
 
-- Email OTP is better than password-only login, but weaker than TOTP or WebAuthn.
-- If the admin mailbox is compromised, the second factor can still be bypassed.
-- For stronger security later, consider TOTP, backup codes, trusted devices, or passkeys.
+- This improves admin security, but email OTP is still weaker than TOTP or WebAuthn.
+- If the admin email account is compromised, the second factor can still be bypassed.
+- For stronger future versions, consider TOTP, backup codes, trusted devices, or passkeys.
