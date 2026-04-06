@@ -122,6 +122,20 @@ host-patch/
 
 These are the files you can copy into your Strapi project to get the same admin OTP UI pattern.
 
+If you want to view the same host patch files on GitHub, use:
+
+- [host-patch folder](https://github.com/vivinkv6/strapi-admin-2fa-plugin/tree/master/host-patch)
+- [apply-strapi-admin-2fa-patch.js](https://github.com/vivinkv6/strapi-admin-2fa-plugin/blob/master/host-patch/apply-strapi-admin-2fa-patch.js)
+- [services/auth.js](https://github.com/vivinkv6/strapi-admin-2fa-plugin/blob/master/host-patch/strapi-admin-2fa-patch/services/auth.js)
+- [services/auth.mjs](https://github.com/vivinkv6/strapi-admin-2fa-plugin/blob/master/host-patch/strapi-admin-2fa-patch/services/auth.mjs)
+- [pages/Auth/components/Login.js](https://github.com/vivinkv6/strapi-admin-2fa-plugin/blob/master/host-patch/strapi-admin-2fa-patch/pages/Auth/components/Login.js)
+- [pages/Auth/components/Login.mjs](https://github.com/vivinkv6/strapi-admin-2fa-plugin/blob/master/host-patch/strapi-admin-2fa-patch/pages/Auth/components/Login.mjs)
+
+That gives users both options:
+
+- install from npm and copy the bundled files
+- inspect the admin UI source directly on GitHub before integrating it
+
 ## What The UI Patch Does
 
 The bundled host patch changes the Strapi admin login flow to:
