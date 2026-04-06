@@ -10,6 +10,20 @@ This package adds the backend flow for:
 - rate limiting for login, verify, and resend
 - final Strapi admin session creation only after OTP verification
 
+## UI Preview
+
+### Login Screen
+
+![Admin 2FA login screen](https://raw.githubusercontent.com/vivinkv6/strapi-admin-2fa-plugin/master/public/login.png)
+
+The first step collects the admin email and password before starting the OTP challenge flow.
+
+### OTP Screen
+
+![Admin 2FA OTP screen](https://raw.githubusercontent.com/vivinkv6/strapi-admin-2fa-plugin/master/public/otp.png)
+
+The second step shows the OTP input, resend action, and inline validation feedback during verification.
+
 ## Important
 
 This package does not automatically replace the default Strapi admin login UI.
