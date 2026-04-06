@@ -1,6 +1,6 @@
 {
   "name": "@vivinkv28/strapi-2fa-admin-plugin",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Reusable Strapi admin 2FA plugin",
   "type": "commonjs",
   "keywords": [
