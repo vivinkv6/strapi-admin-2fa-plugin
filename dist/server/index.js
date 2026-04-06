@@ -77,12 +77,22 @@ const getService = () => strapi.plugin("admin-2fa").service("auth");
 const APPLICATION_ERROR_STATUS = {
   ApplicationError: 400,
   ValidationError: 400,
-  UnauthorizedError: 401,
-  ForbiddenError: 403,
+  UnauthorizedError: 400,
+  ForbiddenError: 400,
   NotFoundError: 404,
   PayloadTooLargeError: 413,
   RateLimitError: 429,
   NotImplementedError: 501
+};
+const deriveApplicationErrorStatus = (error2) => {
+  if (typeof error2?.status === "number" && error2.status >= 400 && error2.status < 500) {
+    return error2.status;
+  }
+  const message = typeof error2?.message === "string" ? error2.message.toLowerCase() : "";
+  if (message.includes("session not found") || message.includes("please log in again") || message.includes("otp expired") || message.includes("expired otp")) {
+    return 409;
+  }
+  return APPLICATION_ERROR_STATUS[error2?.name] ?? 400;
 };
 const setRefreshCookie = (ctx, refreshToken, cookieOptions) => {
   ctx.cookies.set(sessionAuth$1.REFRESH_COOKIE_NAME, refreshToken, cookieOptions);
@@ -98,7 +108,7 @@ const getClientIp = (ctx) => {
   return String(ctx.request.ip ?? ctx.ip ?? "").trim();
 };
 const sendApplicationError = (ctx, error2) => {
-  const derivedStatus = typeof error2?.status === "number" && error2.status >= 400 && error2.status < 500 ? error2.status : APPLICATION_ERROR_STATUS[error2?.name] ?? 400;
+  const derivedStatus = deriveApplicationErrorStatus(error2);
   ctx.status = derivedStatus;
   ctx.body = {
     data: null,
