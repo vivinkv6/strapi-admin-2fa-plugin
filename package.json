@@ -13,7 +13,8 @@
   ],
   "files": [
     "dist",
-    "docs"
+    "docs",
+    "host-patch"
   ],
   "exports": {
     "./package.json": "./package.json",

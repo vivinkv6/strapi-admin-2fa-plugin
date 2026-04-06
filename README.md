@@ -145,6 +145,34 @@ your-project/
 
 This keeps your admin customizations reproducible and easy to reapply after `npm install`.
 
+## Full Host Patch Source Included In This Package
+
+This npm package now includes the ready-to-copy host-side admin patch source directly inside the package under:
+
+```text
+host-patch/
+  apply-strapi-admin-2fa-patch.js
+  strapi-admin-2fa-patch/
+      services/
+        auth.js
+        auth.mjs
+      pages/
+        Auth/
+          components/
+            Login.js
+            Login.mjs
+```
+
+Included files:
+
+- `host-patch/apply-strapi-admin-2fa-patch.js`
+- `host-patch/strapi-admin-2fa-patch/services/auth.js`
+- `host-patch/strapi-admin-2fa-patch/services/auth.mjs`
+- `host-patch/strapi-admin-2fa-patch/pages/Auth/components/Login.js`
+- `host-patch/strapi-admin-2fa-patch/pages/Auth/components/Login.mjs`
+
+These files are the exact host-side patch source for the admin login UI, OTP screen, and patch script, bundled in the npm package itself so you do not need a separate integration document.
+
 ## Step 5: Patch The Strapi Admin Auth Service
 
 Create these files in your Strapi project:
@@ -325,6 +353,156 @@ The working implementation used in the companion project includes:
 - auto focus
 - inline error state
 
+## Exact Admin UI Pieces You Need
+
+If you want the admin OTP screen to look and behave like the working portfolio backend, these are the UI pieces that must exist in your patched `Login` component:
+
+### 1. Shared OTP constants and helpers
+
+Use:
+
+```js
+const OTP_LENGTH = 6;
+const sanitizeOtp = (value = '') => value.replace(/\D/g, '').slice(0, OTP_LENGTH);
+const createOtpDigits = (value = '') =>
+  Array.from({ length: OTP_LENGTH }, (_, index) => value[index] ?? '');
+```
+
+Why this matters:
+
+- forces numeric-only OTP input
+- keeps the code fixed to 6 digits
+- makes the 6-box UI easy to control
+
+### 2. Two screen states inside one login component
+
+Your login screen should switch between:
+
+- credentials screen
+- OTP verification screen
+
+The state shape used in the working backend is:
+
+```js
+const [apiError, setApiError] = React.useState();
+const [otpStep, setOtpStep] = React.useState(null);
+```
+
+`otpStep` stores:
+
+- `challengeId`
+- `expiresAt`
+- `maskedEmail`
+- `rememberMe`
+
+When `otpStep` is `null`, show email/password fields.
+
+When `otpStep` exists, show the OTP UI.
+
+### 3. Patched auth hooks
+
+Your patched auth service must export:
+
+```js
+const {
+  useAdminLoginWithOtpMutation,
+  useVerifyAdminLoginOtpMutation,
+  useResendAdminLoginOtpMutation,
+} = authService;
+```
+
+Then the patched login screen uses:
+
+```js
+const [adminLoginWithOtp, { isLoading: isLoggingIn }] = useAdminLoginWithOtpMutation();
+const [verifyAdminLoginOtp, { isLoading: isVerifyingOtp }] =
+  useVerifyAdminLoginOtpMutation();
+const [resendAdminLoginOtp, { isLoading: isResendingOtp }] =
+  useResendAdminLoginOtpMutation();
+```
+
+### 4. Credentials form step
+
+In the first step, keep the normal Strapi fields:
+
+- `email`
+- `password`
+- `rememberMe`
+
+On submit:
+
+1. call the OTP login endpoint
+2. do not create a Strapi session yet
+3. store the returned `challengeId`, `expiresAt`, and `maskedEmail`
+4. switch to the OTP step
+
+### 5. OTP visual layout
+
+The working backend UI uses:
+
+- a heading such as `Enter your OTP code`
+- a subtitle showing the masked email
+- an expiry message
+- a centered 6-digit input row
+- a primary `Verify OTP` button
+- a secondary `Back` button
+- a tertiary `Resend OTP` button
+- an inline error message area
+
+### 6. OTP input box behavior
+
+The working UI is not a single text input. It is a 6-box OTP component with:
+
+- one visible input per digit
+- automatic focus movement
+- paste support for full OTP values
+- backspace support to move backward
+- left/right arrow key navigation
+- red error styling when validation fails
+
+That behavior lives inside a dedicated `OtpField` component inside the patched `Login.js` / `Login.mjs` files.
+
+### 7. Verify flow
+
+On OTP submit:
+
+1. call the verify endpoint with `challengeId` and `code`
+2. if it succeeds, dispatch the normal Strapi admin login action
+3. navigate to `/` or the `redirectTo` query target
+
+### 8. Resend flow
+
+On resend:
+
+1. call the resend endpoint with `challengeId`
+2. keep the user on the OTP screen
+3. update `expiresAt`
+4. update `maskedEmail` if needed
+5. show a success notification
+
+### 9. Back button behavior
+
+The working backend keeps a `Back` button on the OTP screen that simply resets:
+
+```js
+setOtpStep(null);
+```
+
+That sends the admin back to the email/password screen without refreshing the page.
+
+### 10. Why both `.js` and `.mjs` files are needed
+
+Strapi ships both CommonJS and ESM admin build files inside `node_modules/@strapi/admin/...`.
+
+To keep the admin patch stable, the same logic should be copied into both:
+
+- `Login.js`
+- `Login.mjs`
+- `auth.js`
+- `auth.mjs`
+
+If you patch only one side, the admin build can drift or break depending on how Strapi resolves the files.
+
 ## Step 7: Add A Patch Apply Script
 
 Create:
@@ -454,6 +632,21 @@ After setup, test these cases:
 4. invalid OTP shows an error
 5. expired OTP restarts the flow properly
 6. wrong email/password still fails safely
+
+## Admin UI Documentation Summary
+
+If you want your project README or integration guide to document the admin UI clearly, include these sections in order:
+
+1. exact patch folder structure
+2. exact file names
+3. purpose of each file
+4. auth service mutations to add
+5. login component state you need
+6. OTP UI behavior details
+7. patch apply script behavior
+8. package.json hooks
+9. request/response examples
+10. testing checklist
 
 ## Production Notes
 
