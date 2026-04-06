@@ -1,6 +1,6 @@
 # Architecture Guide
 
-This guide explains the internal structure of `strapi-2fa-admin-plugin` for maintainers and contributors.
+This guide explains the internal structure of `@vivinkv28/strapi-2fa-admin-plugin` for maintainers and contributors.
 
 ## High-Level Design
 

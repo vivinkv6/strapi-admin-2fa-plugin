@@ -1,6 +1,6 @@
-# strapi-2fa-admin-plugin
+# @vivinkv28/strapi-2fa-admin-plugin
 
-`strapi-2fa-admin-plugin` is a Strapi 5 plugin that provides the backend side of an OTP-based 2FA flow for Strapi admin authentication.
+`@vivinkv28/strapi-2fa-admin-plugin` is a Strapi 5 plugin that provides the backend side of an OTP-based 2FA flow for Strapi admin authentication.
 
 This package handles:
 
@@ -15,8 +15,9 @@ This package does **not** replace the Strapi admin login UI by itself. You still
 
 ## Documentation
 
-- [Integration guide](./docs/INTEGRATION.md)
-- [Architecture guide](./docs/ARCHITECTURE.md)
+- [Integration Guide](#integration-guide)
+- [Architecture Guide](#architecture-guide)
+- [Admin UI Integration](#admin-ui-integration)
 
 ## Endpoints
 
@@ -26,7 +27,7 @@ The plugin exposes these content API routes:
 - `POST /api/admin-2fa/verify`
 - `POST /api/admin-2fa/resend`
 
-See the full request and response flow in [docs/INTEGRATION.md](./docs/INTEGRATION.md).
+See the detailed request and response flow in the `Integration Guide` section below.
 
 ## Requirements
 
@@ -41,7 +42,7 @@ See the full request and response flow in [docs/INTEGRATION.md](./docs/INTEGRATI
 Install the package in your Strapi app:
 
 ```bash
-npm install strapi-2fa-admin-plugin
+npm install @vivinkv28/strapi-2fa-admin-plugin
 ```
 
 Then enable it in your Strapi app plugin config:
@@ -128,6 +129,185 @@ This plugin is backend-only. To use it for real admin login 2FA, your project mu
 - optionally call `POST /api/admin-2fa/resend`
 
 The expected frontend flow, payloads, and response handling are documented in [docs/INTEGRATION.md](./docs/INTEGRATION.md).
+The expected frontend flow, payloads, and response handling are documented in the `Integration Guide` and `Admin UI Integration` sections below.
+
+## Integration Guide
+
+This plugin is intended to be used as the backend engine for an admin OTP login flow.
+
+The normal integration flow is:
+
+1. collect admin email and password
+2. call `POST /api/admin-2fa/login`
+3. display an OTP entry screen
+4. call `POST /api/admin-2fa/verify`
+5. optionally call `POST /api/admin-2fa/resend`
+
+### Login request
+
+```http
+POST /api/admin-2fa/login
+Content-Type: application/json
+```
+
+Example payload:
+
+```json
+{
+  "email": "admin@example.com",
+  "password": "super-secret-password",
+  "rememberMe": true,
+  "deviceId": "browser-device-id"
+}
+```
+
+Example success response:
+
+```json
+{
+  "data": {
+    "challengeId": "0d3af6fd-b351-4d1e-bb81-2a8201d8a0f4",
+    "expiresAt": "2026-04-05T18:30:00.000Z",
+    "maskedEmail": "admin@example.com",
+    "rememberMe": true
+  }
+}
+```
+
+### Verify request
+
+```http
+POST /api/admin-2fa/verify
+Content-Type: application/json
+```
+
+Example payload:
+
+```json
+{
+  "challengeId": "0d3af6fd-b351-4d1e-bb81-2a8201d8a0f4",
+  "code": "123456"
+}
+```
+
+Example success response:
+
+```json
+{
+  "data": {
+    "token": "<access-token>",
+    "accessToken": "<access-token>",
+    "user": {
+      "id": 1,
+      "email": "admin@example.com"
+    }
+  }
+}
+```
+
+### Resend request
+
+```http
+POST /api/admin-2fa/resend
+Content-Type: application/json
+```
+
+Example payload:
+
+```json
+{
+  "challengeId": "0d3af6fd-b351-4d1e-bb81-2a8201d8a0f4"
+}
+```
+
+### UI error states to handle
+
+- invalid email or password
+- OTP expired
+- OTP session not found
+- invalid OTP code
+- too many authentication attempts
+- resend limit exceeded
+
+## Admin UI Integration
+
+This package is backend-focused. To make it usable in a real Strapi admin login flow, the host project must provide an admin-side integration.
+
+A typical admin UI integration has two screens or states:
+
+### 1. Credentials step
+
+- collect email and password
+- send them to `/api/admin-2fa/login`
+- if successful, store `challengeId` in memory and switch the UI into OTP mode
+
+### 2. OTP step
+
+- collect the OTP code
+- submit it to `/api/admin-2fa/verify`
+- if successful, continue the normal authenticated admin flow
+- provide a resend button that calls `/api/admin-2fa/resend`
+
+### Recommended UI behavior
+
+- keep login and OTP as separate form states
+- do not create a session after password validation alone
+- only treat the login as complete after `/verify` succeeds
+- if resend or verify says the challenge expired, restart from the credentials step
+
+### Current integration approach used by the example project
+
+In the companion Strapi app used during development, the admin login UI is integrated by patching Strapi's admin login screen and auth service so they call:
+
+- `/api/admin-2fa/login`
+- `/api/admin-2fa/verify`
+- `/api/admin-2fa/resend`
+
+This plugin itself does not inject that UI automatically. That choice is left to the host app because Strapi admin login customization is more app-specific than the backend OTP engine.
+
+## Architecture Guide
+
+The plugin has a minimal admin entry and a backend-focused server implementation.
+
+### Main files
+
+```text
+admin/src/index.js
+server/src/index.js
+server/src/routes/index.js
+server/src/controllers/auth.js
+server/src/services/auth.js
+server/src/utils/strapi-session-auth.js
+```
+
+### Responsibilities
+
+- `admin/src/index.js`
+  Minimal admin plugin stub required by the Strapi Plugin SDK.
+
+- `server/src/routes/index.js`
+  Declares the plugin routes for login, verify, and resend.
+
+- `server/src/controllers/auth.js`
+  Reads requests, extracts client IP, delegates to the service, and sets the admin refresh cookie after successful verification.
+
+- `server/src/services/auth.js`
+  Core OTP logic: credential validation, challenge lifecycle, resend/verify rules, rate limiting, email sending, and final session creation.
+
+- `server/src/utils/strapi-session-auth.js`
+  Runtime helper that resolves Strapi's internal admin session utility needed to create the final admin session.
+
+### Security model
+
+- password-only login is not enough
+- raw OTP values are never stored
+- OTPs expire
+- verify/resend/login are rate-limited
+- the final Strapi admin session is created only after OTP verification
+
+### Important limitation
+
+This is email OTP, not TOTP or WebAuthn. It improves admin security substantially, but it is still weaker than authenticator-app or passkey-based 2FA.
 
 If you already maintain a patched Strapi admin login screen, point it to:
 

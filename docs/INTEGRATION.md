@@ -1,6 +1,6 @@
 # Integration Guide
 
-This guide explains how to use `strapi-2fa-admin-plugin` inside an existing Strapi 5 project.
+This guide explains how to use `@vivinkv28/strapi-2fa-admin-plugin` inside an existing Strapi 5 project.
 
 ## What The Plugin Does
 
@@ -29,7 +29,7 @@ The plugin registers these routes:
 ### Published npm package
 
 ```bash
-npm install strapi-2fa-admin-plugin
+npm install @vivinkv28/strapi-2fa-admin-plugin
 ```
 
 ### Local external plugin
