@@ -19135,21 +19135,21 @@ class ForbiddenError extends ApplicationError$1 {
     this.message = message;
   }
 }
-class UnauthorizedError extends ApplicationError$1 {
+let UnauthorizedError$1 = class UnauthorizedError extends ApplicationError$1 {
   constructor(message = "Unauthorized", details) {
     super(message, details);
     this.name = "UnauthorizedError";
     this.message = message;
   }
-}
-class RateLimitError extends ApplicationError$1 {
+};
+let RateLimitError$1 = class RateLimitError extends ApplicationError$1 {
   constructor(message = "Too many requests, please try again later.", details) {
     super(message, details);
     this.name = "RateLimitError";
     this.message = message;
     this.details = details || {};
   }
-}
+};
 class PayloadTooLargeError extends ApplicationError$1 {
   constructor(message = "Entity too large", details) {
     super(message, details);
@@ -19182,8 +19182,8 @@ const errors$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProp
   PaginationError,
   PayloadTooLargeError,
   PolicyError,
-  RateLimitError,
-  UnauthorizedError,
+  RateLimitError: RateLimitError$1,
+  UnauthorizedError: UnauthorizedError$1,
   ValidationError: ValidationError$1,
   YupValidationError
 }, Symbol.toStringTag, { value: "Module" }));
@@ -43781,7 +43781,7 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(dist);
 const crypto = require$$1$2;
 const { errors } = require$$1;
 const sessionAuth = strapiSessionAuth;
-const { ApplicationError: ApplicationError2, ValidationError: ValidationError3 } = errors;
+const { ApplicationError: ApplicationError2, RateLimitError: RateLimitError2, UnauthorizedError: UnauthorizedError2, ValidationError: ValidationError3 } = errors;
 const STORE_NAME = "admin-otp-login";
 const STORE_KEY_PREFIX = "challenge:";
 const RATE_LIMIT_KEY_PREFIX = "rate-limit:";
@@ -43900,11 +43900,11 @@ const deleteChallenge = async (store, challengeId) => {
 const getChallenge = async (store, challengeId) => {
   const challenge = await store.get({ key: getStoreKey(challengeId) });
   if (!challenge) {
-    throw new ApplicationError2("OTP session not found. Please log in again.");
+    throw new UnauthorizedError2("OTP session not found. Please log in again.");
   }
   if (new Date(challenge.expiresAt).getTime() <= Date.now()) {
     await deleteChallenge(store, challengeId);
-    throw new ApplicationError2("OTP expired. Please log in again.");
+    throw new UnauthorizedError2("OTP expired. Please log in again.");
   }
   return challenge;
 };
@@ -43927,7 +43927,7 @@ const registerRateLimitHit = async (store, config2, action, scope, identifier) =
     return;
   }
   if (existing.count >= limit) {
-    throw new ApplicationError2("Too many authentication attempts. Please wait a few minutes and try again.");
+    throw new RateLimitError2("Too many authentication attempts. Please wait a few minutes and try again.");
   }
   await store.set({
     key,
@@ -44006,7 +44006,7 @@ var auth$1 = () => ({
     });
     logDuration(config2, "checkCredentials", credentialsStartedAt);
     if (!user) {
-      throw new ApplicationError2(info?.message ?? "Invalid credentials");
+      throw new UnauthorizedError2(info?.message ?? "Invalid credentials");
     }
     const challengeId = crypto.randomUUID();
     const code = createOtpCode(config2.otpDigits);
@@ -44055,7 +44055,7 @@ var auth$1 = () => ({
     await registerRateLimitHit(store, config2, "resend", "email", current.email);
     if (current.resendCount >= config2.maxResends) {
       await deleteChallenge(store, challengeId);
-      throw new ApplicationError2("Maximum OTP resend attempts exceeded. Please log in again.");
+      throw new RateLimitError2("Maximum OTP resend attempts exceeded. Please log in again.");
     }
     const code = createOtpCode(config2.otpDigits);
     const salt = crypto.randomBytes(16).toString("hex");
@@ -44098,7 +44098,7 @@ var auth$1 = () => ({
     await registerRateLimitHit(store, config2, "verify", "email", challenge.email);
     if (challenge.attempts >= config2.maxAttempts) {
       await deleteChallenge(store, challengeId);
-      throw new ApplicationError2("Maximum OTP attempts exceeded. Please log in again.");
+      throw new RateLimitError2("Maximum OTP attempts exceeded. Please log in again.");
     }
     const hashStartedAt = now();
     const computedHash = await createOtpHash(challengeId, code, challenge.salt);
@@ -44111,7 +44111,7 @@ var auth$1 = () => ({
       const nextAttempts = challenge.attempts + 1;
       if (nextAttempts >= config2.maxAttempts) {
         await deleteChallenge(store, challengeId);
-        throw new ApplicationError2("Maximum OTP attempts exceeded. Please log in again.");
+        throw new RateLimitError2("Maximum OTP attempts exceeded. Please log in again.");
       }
       const storeStartedAt = now();
       await store.set({
@@ -44125,7 +44125,7 @@ var auth$1 = () => ({
         challengeId,
         attempts: nextAttempts
       });
-      throw new ApplicationError2("Invalid OTP code");
+      throw new UnauthorizedError2("Invalid OTP code");
     }
     const deleteStartedAt = now();
     await deleteChallenge(store, challengeId);

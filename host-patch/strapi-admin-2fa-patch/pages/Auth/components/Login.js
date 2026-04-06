@@ -38,6 +38,21 @@ function _interopNamespaceDefault(e) {
 var React__namespace = /*#__PURE__*/_interopNamespaceDefault(React);
 var yup__namespace = /*#__PURE__*/_interopNamespaceDefault(yup);
 
+const getApiErrorMessage = (error, fallback = 'Something went wrong')=>{
+    if (!error || typeof error !== 'object') {
+        return fallback;
+    }
+    const candidates = [
+        error?.data?.error?.message,
+        error?.data?.message,
+        error?.error?.message,
+        error?.message,
+        typeof error?.error === 'string' ? error.error : undefined
+    ];
+    const message = candidates.find((value)=>typeof value === 'string' && value.trim().length > 0);
+    return message ?? fallback;
+};
+
 const OTP_LENGTH = 6;
 const OTP_DIGIT_INPUT_STYLE = {
     width: 'min(3.75rem, calc((100vw - 7rem) / 6))',
@@ -247,7 +262,7 @@ const Login = ({ children })=>{
             deviceId: deviceId.getOrCreateDeviceId()
         });
         if ('error' in res) {
-            const message = res.error.message ?? 'Something went wrong';
+            const message = getApiErrorMessage(res.error);
             if (camelCase(message).toLowerCase() === 'usernotactive') {
                 navigate('/auth/oops');
                 return;
@@ -272,7 +287,7 @@ const Login = ({ children })=>{
             code
         });
         if ('error' in res) {
-            setApiError(res.error.message ?? 'Something went wrong');
+            setApiError(getApiErrorMessage(res.error));
         } else {
             toggleNotification({
                 type: 'success',
@@ -299,7 +314,7 @@ const Login = ({ children })=>{
             challengeId: otpStep.challengeId
         });
         if ('error' in res) {
-            setApiError(res.error.message ?? 'Something went wrong');
+            setApiError(getApiErrorMessage(res.error));
         } else {
             setOtpStep({
                 ...otpStep,

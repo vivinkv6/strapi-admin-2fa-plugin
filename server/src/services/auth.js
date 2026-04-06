@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const { errors } = require('@strapi/utils');
 const sessionAuth = require('../utils/strapi-session-auth');
 
-const { ApplicationError, ValidationError } = errors;
+const { ApplicationError, RateLimitError, UnauthorizedError, ValidationError } = errors;
 
 const STORE_NAME = 'admin-otp-login';
 const STORE_KEY_PREFIX = 'challenge:';
@@ -166,12 +166,12 @@ const getChallenge = async (store, challengeId) => {
   const challenge = await store.get({ key: getStoreKey(challengeId) });
 
   if (!challenge) {
-    throw new ApplicationError('OTP session not found. Please log in again.');
+    throw new UnauthorizedError('OTP session not found. Please log in again.');
   }
 
   if (new Date(challenge.expiresAt).getTime() <= Date.now()) {
     await deleteChallenge(store, challengeId);
-    throw new ApplicationError('OTP expired. Please log in again.');
+    throw new UnauthorizedError('OTP expired. Please log in again.');
   }
 
   return challenge;
@@ -199,7 +199,7 @@ const registerRateLimitHit = async (store, config, action, scope, identifier) =>
   }
 
   if (existing.count >= limit) {
-    throw new ApplicationError('Too many authentication attempts. Please wait a few minutes and try again.');
+    throw new RateLimitError('Too many authentication attempts. Please wait a few minutes and try again.');
   }
 
   await store.set({
@@ -301,7 +301,7 @@ module.exports = () => ({
     logDuration(config, 'checkCredentials', credentialsStartedAt);
 
     if (!user) {
-      throw new ApplicationError(info?.message ?? 'Invalid credentials');
+      throw new UnauthorizedError(info?.message ?? 'Invalid credentials');
     }
 
     const challengeId = crypto.randomUUID();
@@ -360,7 +360,7 @@ module.exports = () => ({
 
     if (current.resendCount >= config.maxResends) {
       await deleteChallenge(store, challengeId);
-      throw new ApplicationError('Maximum OTP resend attempts exceeded. Please log in again.');
+      throw new RateLimitError('Maximum OTP resend attempts exceeded. Please log in again.');
     }
 
     const code = createOtpCode(config.otpDigits);
@@ -413,7 +413,7 @@ module.exports = () => ({
 
     if (challenge.attempts >= config.maxAttempts) {
       await deleteChallenge(store, challengeId);
-      throw new ApplicationError('Maximum OTP attempts exceeded. Please log in again.');
+      throw new RateLimitError('Maximum OTP attempts exceeded. Please log in again.');
     }
 
     const hashStartedAt = now();
@@ -430,7 +430,7 @@ module.exports = () => ({
 
       if (nextAttempts >= config.maxAttempts) {
         await deleteChallenge(store, challengeId);
-        throw new ApplicationError('Maximum OTP attempts exceeded. Please log in again.');
+        throw new RateLimitError('Maximum OTP attempts exceeded. Please log in again.');
       }
 
       const storeStartedAt = now();
@@ -446,7 +446,7 @@ module.exports = () => ({
         attempts: nextAttempts,
       });
 
-      throw new ApplicationError('Invalid OTP code');
+      throw new UnauthorizedError('Invalid OTP code');
     }
 
     const deleteStartedAt = now();
