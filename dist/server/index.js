@@ -74,6 +74,16 @@ const runtimeRequire = createRequire(__filename);
 var strapiSessionAuth = runtimeRequire(resolveSessionAuthPath());
 const sessionAuth$1 = strapiSessionAuth;
 const getService = () => strapi.plugin("admin-2fa").service("auth");
+const APPLICATION_ERROR_STATUS = {
+  ApplicationError: 400,
+  ValidationError: 400,
+  UnauthorizedError: 401,
+  ForbiddenError: 403,
+  NotFoundError: 404,
+  PayloadTooLargeError: 413,
+  RateLimitError: 429,
+  NotImplementedError: 501
+};
 const setRefreshCookie = (ctx, refreshToken, cookieOptions) => {
   ctx.cookies.set(sessionAuth$1.REFRESH_COOKIE_NAME, refreshToken, cookieOptions);
 };
@@ -87,32 +97,69 @@ const getClientIp = (ctx) => {
   }
   return String(ctx.request.ip ?? ctx.ip ?? "").trim();
 };
+const sendApplicationError = (ctx, error2) => {
+  const derivedStatus = typeof error2?.status === "number" && error2.status >= 400 && error2.status < 500 ? error2.status : APPLICATION_ERROR_STATUS[error2?.name] ?? 400;
+  ctx.status = derivedStatus;
+  ctx.body = {
+    data: null,
+    error: {
+      status: derivedStatus,
+      name: error2?.name ?? "ApplicationError",
+      message: error2?.message ?? "Request failed",
+      details: error2?.details ?? {}
+    }
+  };
+};
 var auth$3 = {
   async login(ctx) {
-    const result = await getService().createChallenge(ctx.request.body ?? {}, {
-      clientIp: getClientIp(ctx)
-    });
-    ctx.body = { data: result };
+    try {
+      const result = await getService().createChallenge(ctx.request.body ?? {}, {
+        clientIp: getClientIp(ctx)
+      });
+      ctx.body = { data: result };
+    } catch (error2) {
+      if (error2?.name && APPLICATION_ERROR_STATUS[error2.name]) {
+        sendApplicationError(ctx, error2);
+        return;
+      }
+      throw error2;
+    }
   },
   async resend(ctx) {
-    const result = await getService().resendChallenge(ctx.request.body ?? {}, {
-      clientIp: getClientIp(ctx)
-    });
-    ctx.body = { data: result };
+    try {
+      const result = await getService().resendChallenge(ctx.request.body ?? {}, {
+        clientIp: getClientIp(ctx)
+      });
+      ctx.body = { data: result };
+    } catch (error2) {
+      if (error2?.name && APPLICATION_ERROR_STATUS[error2.name]) {
+        sendApplicationError(ctx, error2);
+        return;
+      }
+      throw error2;
+    }
   },
   async verify(ctx) {
-    const result = await getService().verifyChallenge(ctx.request.body ?? {}, {
-      secureRequest: ctx.request.secure,
-      clientIp: getClientIp(ctx)
-    });
-    setRefreshCookie(ctx, result.refreshToken, result.cookieOptions);
-    ctx.body = {
-      data: {
-        token: result.accessToken,
-        accessToken: result.accessToken,
-        user: result.user
+    try {
+      const result = await getService().verifyChallenge(ctx.request.body ?? {}, {
+        secureRequest: ctx.request.secure,
+        clientIp: getClientIp(ctx)
+      });
+      setRefreshCookie(ctx, result.refreshToken, result.cookieOptions);
+      ctx.body = {
+        data: {
+          token: result.accessToken,
+          accessToken: result.accessToken,
+          user: result.user
+        }
+      };
+    } catch (error2) {
+      if (error2?.name && APPLICATION_ERROR_STATUS[error2.name]) {
+        sendApplicationError(ctx, error2);
+        return;
       }
-    };
+      throw error2;
+    }
   }
 };
 const auth$2 = auth$3;
